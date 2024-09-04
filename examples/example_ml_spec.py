@@ -8,7 +8,7 @@ from metocean_stats.stats.aux_funcs import *
 import warnings
 warnings.filterwarnings('ignore')
 
-ds = xr.open_dataset('/home/konstantinosc/github/dnora/examples/output/ww3_spec_NORA3_Sula_20180101T0000-20191231T2300.nc')
+ds = xr.open_dataset('ww3_spec_NORA3_Sula_20180101T0000-20191231T2300.nc')
 
 # Define training and validation period:
 start_training = '2018-01-01'
