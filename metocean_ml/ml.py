@@ -90,3 +90,5 @@ def predict_ts(ts_origin,var_origin, ts_train,var_train, model='GBR'):
     ts_train.columns = [col.replace('_y', '') for col in ts_train.columns]
     
     return Y_pred
+    
+

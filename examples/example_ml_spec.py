@@ -1,14 +1,33 @@
 import matplotlib.pyplot as plt
 import sklearn
-from metocean_stats.stats import ml
+from metocean_ml import ml
 import numpy as np
 import xarray as xr
 import pandas as pd
-from metocean_stats.stats.aux_funcs import *
 import warnings
 warnings.filterwarnings('ignore')
 
-ds = xr.open_dataset('ww3_spec_NORA3_Sula_20180101T0000-20191231T2300.nc')
+def convert_spec_to_dataframe(ds , spec_name = 'efth', dir_name='direction', freq_name='frequency'):
+    
+    # Reshape the data so that each combination of direction and frequency has its own column
+    df_spec = (
+        ds[spec_name].stack(combination=[dir_name, freq_name])  # Flatten direction and frequency dimensions
+        .to_pandas()  # Convert to a pandas DataFrame
+    )
+    # Rename columns to reflect direction and frequency combinations
+    df_spec.columns = [f"{spec_name}_{dir_name}{dir_idx}_{freq_name}{freq_idx}" 
+                         for dir_idx, freq_idx in zip(*df_spec.columns.codes)]
+
+    
+    return df_spec
+
+def create_zeros_dataframe_like(df):
+    empty_df = 0*df #pd.DataFrame(columns=df.columns)
+    
+    return empty_df
+
+
+ds = xr.open_dataset('/home/konstantinosc/github/dnora/examples/output/ww3_spec_NORA3_Sula_20180101T0000-20191231T2300.nc')
 
 # Define training and validation period:
 start_training = '2018-01-01'
