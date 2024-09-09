@@ -15,7 +15,7 @@ def convert_spec_to_dataframe(ds , spec_name = 'efth', dir_name='direction', fre
         .to_pandas()  # Convert to a pandas DataFrame
     )
     # Rename columns to reflect direction and frequency combinations
-    df_spec.columns = [f"{spec_name}_{dir_name}{dir_idx}_{freq_name}{freq_idx}" 
+    df_spec.columns = [f"{spec_name}_{dir_name[0]}{dir_idx}_{freq_name[0]}{freq_idx}" 
                          for dir_idx, freq_idx in zip(*df_spec.columns.codes)]
 
     
@@ -27,7 +27,7 @@ def create_zeros_dataframe_like(df):
     return empty_df
 
 
-ds = xr.open_dataset('/home/konstantinosc/github/dnora/examples/output/ww3_spec_NORA3_Sula_20180101T0000-20191231T2300.nc')
+ds = xr.open_dataset('ww3_spec_NORA3_Sula_20180101T0000-20191231T2300.nc')
 
 # Define training and validation period:
 start_training = '2018-01-01'
@@ -50,8 +50,8 @@ df_spec_ml  = create_zeros_dataframe_like(df_spec_train)
 #ds_ml = xr.full_like(ds[var_origin[0]][:,station_train,:,:], fill_value=np.nan)
 for i in range(len(df_spec_ml.columns)):
     print(i) 
-    df_spec_ml[:,i] = ml.predict_ts(ts_origin = df_spec_origin,var_origin=df_spec_origin.columns[:],ts_train  = df_spec_train.loc[start_training:end_training],var_train=df_spec_train.columns[i], model=model)
-    
+    df_spec_ml[:,i] = ml.predict_ts(ts_origin = df_spec_origin,var_origin=df_spec_origin.columns[i],ts_train  = df_spec_train.loc[start_training:end_training],var_train=df_spec_train.columns[i], model=model)
+
 
 
 #ds_ml.to_netcdf(model+'_ml_spec.nc')
