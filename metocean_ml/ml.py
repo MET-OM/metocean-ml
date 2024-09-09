@@ -69,7 +69,7 @@ def predict_ts(ts_origin,var_origin, ts_train,var_train, model='GBR'):
     elif model == 'GBR':
         model = GradientBoostingRegressor(n_estimators=100, learning_rate=0.1, max_depth=3)
         model.fit(X_train, Y_train)
-        Y_pred[:] = model.predict(ts_origin[var_origin].values).reshape(-1, 1)    
+        Y_pred[:] = model.predict(ts_origin[var_origin].values).reshape(-1, 1)  
     elif model == 'LSTM':
         from keras.models import Sequential
         from keras.layers import LSTM, Dense
