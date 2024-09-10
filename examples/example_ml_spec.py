@@ -7,6 +7,35 @@ import pandas as pd
 import warnings
 warnings.filterwarnings('ignore')
 
+def convert_dataframe_to_spec(df, spec_name='efth', dir_name='direction', freq_name='frequency'):
+    # Extract direction and frequency indices from column names
+    dir_freq_indices = [col.split('_')[1:] for col in df.columns]
+    dir_indices = [int(indices[0][1:]) for indices in dir_freq_indices]
+    freq_indices = [int(indices[1][1:]) for indices in dir_freq_indices]
+
+    # Determine the unique direction and frequency indices
+    unique_dir_indices = np.unique(dir_indices)
+    unique_freq_indices = np.unique(freq_indices)
+
+    # Create empty xarray with the correct dimensions
+    ds = xr.DataArray(
+        np.empty((len(df), len(unique_dir_indices), len(unique_freq_indices))),
+        coords={
+            'time': df.index,
+            dir_name: unique_dir_indices,
+            freq_name: unique_freq_indices
+        },
+        dims=['time', dir_name, freq_name]
+    )
+
+    # Fill the xarray with data from the DataFrame
+    for col, dir_idx, freq_idx in zip(df.columns, dir_indices, freq_indices):
+        ds.loc[:, dir_idx, freq_idx] = df[col]
+
+    return ds
+
+
+
 def convert_spec_to_dataframe(ds , spec_name = 'efth', dir_name='direction', freq_name='frequency'):
     
     # Reshape the data so that each combination of direction and frequency has its own column
@@ -18,7 +47,7 @@ def convert_spec_to_dataframe(ds , spec_name = 'efth', dir_name='direction', fre
     df_spec.columns = [f"{spec_name}_{dir_name[0]}{dir_idx}_{freq_name[0]}{freq_idx}" 
                          for dir_idx, freq_idx in zip(*df_spec.columns.codes)]
 
-    
+    df_spec = df_spec.loc[:,~df_spec.columns.duplicated()].copy()
     return df_spec
 
 def create_zeros_dataframe_like(df):
@@ -49,10 +78,19 @@ df_spec_ml  = create_zeros_dataframe_like(df_spec_train)
 # Run ML model:
 #ds_ml = xr.full_like(ds[var_origin[0]][:,station_train,:,:], fill_value=np.nan)
 for i in range(len(df_spec_ml.columns)):
-    print(i) 
-    df_spec_ml[:,i] = ml.predict_ts(ts_origin = df_spec_origin,var_origin=df_spec_origin.columns[i],ts_train  = df_spec_train.loc[start_training:end_training],var_train=df_spec_train.columns[i], model=model)
+    df_spec_ml[df_spec_ml.columns[i]] = ml.predict_ts(ts_origin = df_spec_origin,var_origin=[df_spec_origin.columns[i]],
+                                        ts_train  = df_spec_train.loc[start_training:end_training],
+                                        var_train=df_spec_train.columns[i], 
+                                        model=model)
+    #else:
+    #    df_spec_ml[df_spec_ml.columns[i]] = ml.predict_ts(ts_origin = df_spec_origin,var_origin=df_spec_origin.columns[i-1:i],
+    #                                    ts_train  = df_spec_train.loc[start_training:end_training],
+    #                                    var_train=df_spec_train.columns[i], 
+    #                                    model=model)
 
 
+df_spec_ml.to_csv('data.csv')
+breakpoint()
 
 #ds_ml.to_netcdf(model+'_ml_spec.nc')
 ds_ml = xr.open_dataset(model+'_ml_spec.nc')
