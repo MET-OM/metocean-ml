@@ -7,34 +7,27 @@ import pandas as pd
 import warnings
 warnings.filterwarnings('ignore')
 
+
 def convert_dataframe_to_spec(df, spec_name='efth', dir_name='direction', freq_name='frequency'):
-    # Extract direction and frequency indices from column names
-    dir_freq_indices = [col.split('_')[1:] for col in df.columns]
-    dir_indices = [int(indices[0][1:]) for indices in dir_freq_indices]
-    freq_indices = [int(indices[1][1:]) for indices in dir_freq_indices]
+    # Split column names into spec name, direction and frequency values
+    split_cols = df.columns.str.split('_d|_f', expand=True)
 
-    # Determine the unique direction and frequency indices
-    unique_dir_indices = np.unique(dir_indices)
-    unique_freq_indices = np.unique(freq_indices)
-
-    # Create empty xarray with the correct dimensions
-    ds = xr.DataArray(
-        np.empty((len(df), len(unique_dir_indices), len(unique_freq_indices))),
-        coords={
-            'time': df.index,
-            dir_name: unique_dir_indices,
-            freq_name: unique_freq_indices
-        },
-        dims=['time', dir_name, freq_name]
+    # Convert direction and frequency values to float and create a MultiIndex
+    multi_index = pd.MultiIndex.from_tuples(
+        [(row[0], float(row[1]), float(row[2])) for row in split_cols.values], 
+        names=[None, dir_name, freq_name]
     )
+    
+    # Assign this MultiIndex to the columns of the DataFrame
+    df.columns = multi_index
 
-    # Fill the xarray with data from the DataFrame
-    for col, dir_idx, freq_idx in zip(df.columns, dir_indices, freq_indices):
-        ds.loc[:, dir_idx, freq_idx] = df[col]
+    # Convert DataFrame to xarray DataArray
+    ds = xr.DataArray(df)
+    # Unstack the multi-indexed columns into separate dimensions
+    ds = ds.unstack(dim='dim_1')
+    ds = ds.drop_vars('dim_1_level_0')
 
     return ds
-
-
 
 def convert_spec_to_dataframe(ds , spec_name = 'efth', dir_name='direction', freq_name='frequency'):
     
@@ -43,10 +36,10 @@ def convert_spec_to_dataframe(ds , spec_name = 'efth', dir_name='direction', fre
         ds[spec_name].stack(combination=[dir_name, freq_name])  # Flatten direction and frequency dimensions
         .to_pandas()  # Convert to a pandas DataFrame
     )
+    
     # Rename columns to reflect direction and frequency combinations
-    df_spec.columns = [f"{spec_name}_{dir_name[0]}{dir_idx}_{freq_name[0]}{freq_idx}" 
-                         for dir_idx, freq_idx in zip(*df_spec.columns.codes)]
-
+    df_spec.columns = [f"{spec_name}_d{dir_val}_f{freq_val}" 
+                         for dir_val, freq_val in df_spec.columns]
     df_spec = df_spec.loc[:,~df_spec.columns.duplicated()].copy()
     return df_spec
 
@@ -90,9 +83,10 @@ for i in range(len(df_spec_ml.columns)):
 
 
 df_spec_ml.to_csv('data.csv')
+ds_ml = convert_dataframe_to_spec(df_spec_ml, spec_name='efth', dir_name='direction', freq_name='frequency')
 breakpoint()
 
-#ds_ml.to_netcdf(model+'_ml_spec.nc')
+ds_ml.to_netcdf(model+'_ml_spec.nc')
 ds_ml = xr.open_dataset(model+'_ml_spec.nc')
 # Create subplots
 fig, axs = plt.subplots(1, 2, figsize=(10, 5))
